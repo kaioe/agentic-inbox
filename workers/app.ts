@@ -59,7 +59,9 @@ app.use("*", async (c, next) => {
 		);
 	}
 
-	const token = c.req.header("cf-access-jwt-assertion");
+	const token = c.req.header("cf-access-jwt-assertion") ||
+		c.req.header("cookie")?.match(/CF_Authorization=([^;]+)/)?.[1];
+
 	if (!token) {
 		return c.text("Missing required CF Access JWT", 403);
 	}
