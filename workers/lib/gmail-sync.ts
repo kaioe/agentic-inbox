@@ -156,7 +156,7 @@ export interface SyncResult {
 export async function syncGmailInbox(
 	env: Env,
 	mailboxId: string,
-	maxMessages: number = 20,
+	maxMessages: number = 10,
 ): Promise<SyncResult> {
 	const result: SyncResult = { fetched: 0, inserted: 0, duplicates: 0, errors: [] };
 
@@ -194,16 +194,16 @@ export async function syncGmailInbox(
 		console.log(`[Gmail Sync] Found ${messages.length} unread messages. Syncing...`);
 
 		for (const msg of messages) {
-			try {
-				// Fetch full message with format=full to get payload
+		try {
+			// Fetch full message with format=full to get payload
 				const full: GmailMessage = await gmailFetch(env, `/messages/${msg.id}?format=full`);
 
 				// Generate a local ID for the email (deterministic from Gmail ID)
 				const emailId = `gmail-${full.id}`;
 
-				// Skip if we already imported this email (PK-safe check)
-				const existing = await (stub as any).emailExists(emailId);
-				if (existing) {
+				// Check dedup via the DO's fetch API (stubs only support .fetch())
+				const checkResp = await stub.fetch(new Request(`http://internal/api/v1/mailboxes/${mailboxId}/emails/${emailId}`));
+				if (checkResp.ok) {
 					result.duplicates++;
 					continue;
 				}
@@ -232,12 +232,6 @@ export async function syncGmailInbox(
 				const threadId = full.threadId || msg.id;
 				let localThreadId = emailReferences[0] || (inReplyTo ? extractMsgId(inReplyTo) : null) || threadId;
 
-				// Try subject-based threading for emails without references
-				if (!inReplyTo && emailReferences.length === 0) {
-					const subjectThread = await (stub as any).findThreadBySubject(subject, from);
-					if (subjectThread) localThreadId = subjectThread;
-				}
-
 				// Download and store attachments
 				const attachmentParts = collectAttachmentParts(full.payload);
 				const attachmentData: StoredAttachment[] = [];
@@ -247,7 +241,7 @@ export async function syncGmailInbox(
 						const rawContent = base64urlDecode(attResp.data || "");
 
 						const attId = crypto.randomUUID();
-						const filename = att.filename.replace(/[\/\\:*?"<>|\x00-\x1f]/g, "_");
+						const filename = att.filename.replace(/[\/\\:*?"<>\x00-\x1f]/g, "_");
 
 						await env.BUCKET.put(`attachments/${emailId}/${attId}/${filename}`, rawContent);
 						attachmentData.push({
@@ -284,17 +278,23 @@ export async function syncGmailInbox(
 
 				result.inserted++;
 
-				// Mark as READ in Gmail after successful import
-				await gmailFetch(env, `/messages/${full.id}/modify`, {
+				// Mark as READ in Gmail after successful import (best-effort, non-blocking)
+				gmailFetch(env, `/messages/${full.id}/modify`, {
 					method: "POST",
 					body: JSON.stringify({ removeLabelIds: ["UNREAD"] }),
-				});
+				}).catch(() => { /* non-critical */ });
 
 				console.log(`[Gmail Sync] Imported: "${subject}" (${full.id})`);
 
 			} catch (msgErr: any) {
-				console.error(`[Gmail Sync] Error processing message ${msg.id}:`, msgErr.message);
-				result.errors.push(`Message ${msg.id}: ${msgErr.message}`);
+				// Treat PK constraint violations as duplicates (idempotent)
+				if (msgErr.message?.includes("UNIQUE constraint") || msgErr.message?.includes("SQLITE_CONSTRAINT_PRIMARYKEY")) {
+					result.duplicates++;
+					console.log(`[Gmail Sync] Duplicate (already imported): ${msg.id}`);
+				} else {
+					console.error(`[Gmail Sync] Error processing message ${msg.id}:`, msgErr.message);
+					result.errors.push(`Message ${msg.id}: ${msgErr.message}`);
+				}
 			}
 		}
 
