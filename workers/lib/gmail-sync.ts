@@ -150,7 +150,7 @@ export interface SyncResult {
  * Sync new (unseen) emails from Gmail into the Mailbox Durable Object.
  *
  * @param env         - Worker environment (needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN)
- * @param mailboxId   - The mailbox email address (used as DO name, e.g. "oss@bjjlotusclub.com")
+ * @param mailboxId   - The mailbox email address (used as DO name, e.g. "user@example.com")
  * @param maxMessages - Maximum number of messages to fetch per sync (default 20)
  */
 export async function syncGmailInbox(

@@ -3,7 +3,7 @@
   <p><em>A self-hosted email client with an AI agent, running entirely on Cloudflare Workers</em></p>
 </div>
 
-Fork of [cloudflare/agentic-inbox](https://github.com/cloudflare/agentic-inbox) with custom enhancements for the BJJ Lotus Club platform.
+Fork of [cloudflare/agentic-inbox](https://github.com/cloudflare/agentic-inbox) with custom enhancements.
 
 ## What It Does
 
@@ -25,7 +25,7 @@ This fork adds significant functionality on top of the original Cloudflare templ
 - **Prompt Injection Defense** -- Dual-layer protection: scans incoming email body AND thread history for prompt injection before auto-drafting.
 - **Shared Tool Library** -- `workers/lib/tools.ts` provides a unified business-logic layer used by both the Agent (WebSocket) and MCP server, ensuring consistent behavior.
 - **Folder Management** -- 6 system folders (inbox, sent, draft, archive, trash, spam) with move operations and proper sidebar ordering.
-- **Timezone Support** -- All dates rendered in Australia/Brisbane (AEST, UTC+10) via date-fns-tz.
+- **Configurable Timezone** -- All dates rendered in a configurable timezone via `DISPLAY_TZ` env var (defaults to UTC).
 - **Reply/Forward API** -- Dedicated API endpoints for reply and forward threading with proper `In-Reply-To` and `References` headers.
 
 ## Features
@@ -41,9 +41,6 @@ This fork adds significant functionality on top of the original Cloudflare templ
 ## Architecture
 
 ```
-                              bjjlotusclub.com
-                                   /mail (reverse proxy)
-                                       |
 ┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   Browser    │────>│  Hono Worker     │────>│  MailboxDO      │
 │  React SPA   │     │  (API + SSR)     │     │  (SQLite + R2)  │
@@ -61,8 +58,6 @@ This fork adds significant functionality on top of the original Cloudflare templ
                                               └─────────────────┘
 ```
 
-The inbox runs as a standalone Cloudflare Worker and is integrated into the BJJ Lotus Club site via a reverse proxy at `/mail` (git submodule + Express proxy).
-
 ## Stack
 
 - **Frontend:** React 19, React Router v7, Tailwind CSS, Zustand, TipTap rich text editor, `@cloudflare/kumo`
@@ -75,14 +70,19 @@ The inbox runs as a standalone Cloudflare Worker and is integrated into the BJJ 
 
 ```bash
 npm install
+cp wrangler.jsonc.example wrangler.jsonc
+cp shared/dates.example.ts shared/dates.ts
 npm run dev
 ```
 
+Then edit `wrangler.jsonc` with your domain, email addresses, and R2 bucket name. Optionally change the timezone in `shared/dates.ts` (defaults to UTC).
+
 ### Configuration
 
-1. Copy `.dev.vars.example` to `.dev.vars` and set your domain
-2. Create an R2 bucket: `wrangler r2 bucket create bjj-agentic-inbox`
-3. For Gmail sync, set `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` as secrets
+1. Set your domain and email addresses in `wrangler.jsonc`
+2. Create an R2 bucket matching the `bucket_name` in `wrangler.jsonc`: `wrangler r2 bucket create agentic-inbox`
+3. Optionally set your preferred timezone in `shared/dates.ts` (change `DISPLAY_TZ`, defaults to `UTC`)
+4. For Gmail sync, set `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` as secrets
 
 ### Deploy
 
@@ -99,6 +99,17 @@ npm run deploy
 | `GMAIL_CLIENT_ID` | Google OAuth2 client ID (optional, for Gmail sync) |
 | `GMAIL_CLIENT_SECRET` | Google OAuth2 client secret (optional, for Gmail sync) |
 | `GMAIL_REFRESH_TOKEN` | Google OAuth2 refresh token (optional, for Gmail sync) |
+
+### Environment Variables (set in wrangler.jsonc)
+
+| Variable | Description |
+|---|---|
+| `DOMAINS` | Your domain with Email Routing enabled (e.g. `example.com`) |
+| `EMAIL_ADDRESSES` | Array of email addresses for this inbox |
+
+### Timezone
+
+Set `DISPLAY_TZ` in `shared/dates.ts` to your preferred IANA timezone (defaults to `UTC`).
 
 ## Production Setup
 

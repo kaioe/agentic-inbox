@@ -17,3 +17,7 @@ opencode.jsonc
 skills-lock.json
 .DS_Store
 worker-configuration.d.ts
+
+# Local config -- copy from .example files
+wrangler.jsonc
+shared/dates.ts

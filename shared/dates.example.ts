@@ -9,13 +9,19 @@
  * `workers/lib/html.ts` (`formatEmailDate`). Now one canonical set
  * imported by both the frontend and backend.
  *
- * All dates are displayed in **Australia/Brisbane (UTC+10)** timezone.
+ * All dates are displayed in a configurable timezone (defaults to UTC).
+ * Change DISPLAY_TZ below to your preferred IANA timezone
+ * (e.g. "Australia/Brisbane", "America/New_York", "Europe/London").
  */
 
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
-const BRISBANE_TZ = "Australia/Brisbane";
+/**
+ * Timezone for displaying dates.
+ * Defaults to "UTC" -- change to your preferred IANA timezone.
+ */
+const DISPLAY_TZ = "UTC";
 
 /** Parse safely -- returns null on invalid dates instead of NaN-date. */
 function safeParse(dateStr: string | undefined | null): Date | null {
@@ -28,9 +34,9 @@ function safeParse(dateStr: string | undefined | null): Date | null {
 	}
 }
 
-/** Helper to convert a Date to Brisbane time string for formatting. */
-function toBrisbaneTime(date: Date): Date {
-	return toZonedTime(date, BRISBANE_TZ);
+/** Helper to convert a Date to the display timezone for formatting. */
+function toDisplayTime(date: Date): Date {
+	return toZonedTime(date, DISPLAY_TZ);
 }
 
 /**
@@ -38,61 +44,56 @@ function toBrisbaneTime(date: Date): Date {
  * - Today: "3:42 PM"
  * - This year: "Apr 15"
  * - Older: "Apr 15, 2024"
- * All times are in **Australia/Brisbane (UTC+10)**.
  */
 export function formatListDate(dateStr: string): string {
 	const date = safeParse(dateStr);
 	if (!date) return dateStr;
 
-	const brisbaneDate = toBrisbaneTime(date);
-	const now = toBrisbaneTime(new Date());
+	const displayDate = toDisplayTime(date);
+	const now = toDisplayTime(new Date());
 
-	if (brisbaneDate.toDateString() === now.toDateString()) {
-		return format(brisbaneDate, "h:mm a");
+	if (displayDate.toDateString() === now.toDateString()) {
+		return format(displayDate, "h:mm a");
 	}
-	if (brisbaneDate.getFullYear() === now.getFullYear()) {
-		return format(brisbaneDate, "MMM d");
+	if (displayDate.getFullYear() === now.getFullYear()) {
+		return format(displayDate, "MMM d");
 	}
-	return format(brisbaneDate, "MMM d, yyyy");
+	return format(displayDate, "MMM d, yyyy");
 }
 
 /**
  * Email detail header.
  * "Tue, Apr 15, 3:42 PM"
- * All times are in **Australia/Brisbane (UTC+10)**.
  */
 export function formatDetailDate(dateStr: string): string {
 	const date = safeParse(dateStr);
 	if (!date) return dateStr;
 
-	const brisbaneDate = toBrisbaneTime(date);
-	return format(brisbaneDate, "EEE, MMM d, h:mm a");
+	const displayDate = toDisplayTime(date);
+	return format(displayDate, "EEE, MMM d, h:mm a");
 }
 
 /**
- * Thread message headers — time only.
+ * Thread message headers -- time only.
  * "3:42 PM"
- * All times are in **Australia/Brisbane (UTC+10)**.
  */
 export function formatShortDate(dateStr: string): string {
 	const date = safeParse(dateStr);
 	if (!date) return dateStr;
 
-	const brisbaneDate = toBrisbaneTime(date);
-	return format(brisbaneDate, "h:mm a");
+	const displayDate = toDisplayTime(date);
+	return format(displayDate, "h:mm a");
 }
 
 /**
  * Compose quoted replies & backend quoted blocks.
  * "Tue, Apr 15, 2026, 3:42 PM"
- *
- * All times are in **Australia/Brisbane (UTC+10)**.
  */
 export function formatQuotedDate(dateStr: string | undefined): string {
 	if (!dateStr) return "";
 	const date = safeParse(dateStr);
 	if (!date) return dateStr;
 
-	const brisbaneDate = toBrisbaneTime(date);
-	return format(brisbaneDate, "EEE, MMM d, yyyy, h:mm a");
+	const displayDate = toDisplayTime(date);
+	return format(displayDate, "EEE, MMM d, yyyy, h:mm a");
 }
