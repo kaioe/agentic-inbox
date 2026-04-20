@@ -201,13 +201,6 @@ export async function syncGmailInbox(
 				// Generate a local ID for the email (deterministic from Gmail ID)
 				const emailId = `gmail-${full.id}`;
 
-				// Check dedup via the DO's fetch API (stubs only support .fetch())
-				const checkResp = await stub.fetch(new Request(`http://internal/api/v1/mailboxes/${mailboxId}/emails/${emailId}`));
-				if (checkResp.ok) {
-					result.duplicates++;
-					continue;
-				}
-
 				// Extract body
 				const { html, text } = extractBody(full.payload);
 				const body = html || text || full.snippet || "";
