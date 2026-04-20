@@ -855,7 +855,13 @@ export class MailboxDO extends DurableObject<Env> {
 
 		// Sent emails are always read — the sender obviously knows what they wrote.
 		// This prevents sent replies from inflating thread_unread_count.
-		const insertResult = this.db
+
+		// Skip duplicate inserts atomically
+		if (this.emailExists(email.id)) {
+			throw new Error(`UNIQUE constraint failed: emails.id (${email.id})`);
+		}
+
+		this.db
 			.insert(schema.emails)
 			.values({
 				id: email.id,
@@ -875,13 +881,7 @@ export class MailboxDO extends DurableObject<Env> {
 				message_id: email.message_id ?? null,
 				raw_headers: email.raw_headers ?? null,
 			})
-			.onConflictDoNothing() // Skip if ID already exists
 			.run();
-
-		// Check if insert was skipped (duplicate)
-		if (insertResult.changes === 0) {
-			throw new Error(`UNIQUE constraint failed: emails.id (${email.id})`);
-		}
 
 		if (attachments.length > 0) {
 			this.db.insert(schema.attachments).values(attachments).run();
