@@ -14,7 +14,7 @@ Read the blog post to learn more about Cloudflare Email Service and how to use i
 
 ## How to setup
 
-**Important**: Clicking the 'Deploy to Cloudflare' button is only one part of the setup. You must follow the **After deploying** steps as well. For a full step-by-step guide with screenshots, refer to this comment: 
+**Important**: Clicking the 'Deploy to Cloudflare' button is only one part of the setup. You must follow the **After deploying** steps as well. For a full step-by-step guide with screenshots, refer to this comment:
 https://github.com/cloudflare/agentic-inbox/issues/4#issuecomment-4269118513
 
 ### To set up
@@ -60,7 +60,7 @@ npm run dev
 ### Configuration
 
 1. Set your domain in `wrangler.jsonc`
-2. Create an R2 bucket named `agentic-inbox`: `wrangler r2 bucket create agentic-inbox`
+2. Create an R2 bucket named `bjj-agentic-inbox`: `wrangler r2 bucket create bjj-agentic-inbox`
 
 ### Deploy
 

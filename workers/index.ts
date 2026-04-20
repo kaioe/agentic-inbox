@@ -20,6 +20,7 @@ import { handleReplyEmail, handleForwardEmail } from "./routes/reply-forward";
 import { Folders } from "../shared/folders";
 import type { Env } from "./types";
 import { requireMailbox, type MailboxContext } from "./lib/mailbox";
+import { syncGmailInbox } from "./lib/gmail-sync";
 
 type AppContext = Context<MailboxContext>;
 
@@ -138,6 +139,22 @@ app.delete("/api/v1/mailboxes/:mailboxId", async (c) => {
 	if (!(await c.env.BUCKET.head(key))) return c.json({ error: "Not found" }, 404);
 	await c.env.BUCKET.delete(key); // TODO: also delete DO data and R2 attachment blobs
 	return c.body(null, 204);
+});
+
+// -- Gmail Sync -------------------------------------------------------
+
+app.post("/api/v1/mailboxes/:mailboxId/sync", async (c) => {
+	const mailboxId = c.req.param("mailboxId")!;
+	const body = await c.req.json().catch(() => ({}));
+	const maxMessages = typeof body.maxMessages === "number" ? Math.min(body.maxMessages, 50) : 20;
+
+	try {
+		const result = await syncGmailInbox(c.env, mailboxId, maxMessages);
+		return c.json(result);
+	} catch (e: any) {
+		console.error("[Gmail Sync] Error:", e.message);
+		return c.json({ error: "Sync failed", details: e.message }, 500);
+	}
 });
 
 // -- Emails ---------------------------------------------------------

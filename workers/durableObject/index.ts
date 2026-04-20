@@ -816,6 +816,18 @@ export class MailboxDO extends DurableObject<Env> {
 		return null;
 	}
 
+	// ── Gmail sync helpers ──────────────────────────────────────────
+
+	/**
+	 * Check whether an email with the given local ID already exists.
+	 * Used by the Gmail sync to avoid importing duplicates (PK-safe).
+	 */
+	async emailExists(emailId: string): Promise<boolean> {
+		const row = this.ctx.storage.sql
+			.exec(`SELECT 1 FROM emails WHERE id = ?1 LIMIT 1`, emailId);
+		return row.length > 0;
+	}
+
 	// ── Email creation (Drizzle) ───────────────────────────────────
 
 	async createEmail(
